@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Face Detection & Analysis Pipeline -- an S3 upload triggers a Lambda that
+  calls Amazon Rekognition DetectFaces and stores a flattened summary in
+  DynamoDB, queryable through an API Gateway REST API.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+
+Resources:
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "face-analysis-uploads-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT, GET]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+
+  FaceAnalysisTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: FaceAnalysisResults
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: ImageId
+          AttributeType: S
+        - AttributeName: RecordType
+          AttributeType: S
+        - AttributeName: UploadedAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: ImageId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UploadTimeIndex
+          KeySchema:
+            - AttributeName: RecordType
+              KeyType: HASH
+            - AttributeName: UploadedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  IngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/ingest_lambda/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FaceAnalysisTable
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref UploadsBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref FaceAnalysisTable
+        - Statement:
+            - Effect: Allow
+              Action: rekognition:DetectFaces
+              Resource: "*"
+      Events:
+        ImageUploaded:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/api_lambda/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FaceAnalysisTable
+          UPLOAD_BUCKET: !Ref UploadsBucket
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FaceAnalysisTable
+        - S3WritePolicy:
+            BucketName: !Ref UploadsBucket
+      Events:
+        ListImages:
+          Type: Api
+          Properties:
+            Path: /images
+            Method: GET
+        GetImage:
+          Type: Api
+          Properties:
+            Path: /images/{imageId}
+            Method: GET
+        UploadUrl:
+          Type: Api
+          Properties:
+            Path: /upload-url
+            Method: POST
+
+Outputs:
+  UploadsBucketName:
+    Description: "S3 bucket to upload images to (under the uploads/ prefix)"
+    Value: !Ref UploadsBucket
+  FaceAnalysisTableName:
+    Value: !Ref FaceAnalysisTable
+  ApiUrl:
+    Description: "API Gateway base URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
