@@ -4,18 +4,6 @@ A serverless pipeline that analyzes faces in uploaded photos using Amazon
 Rekognition: age range, gender, top emotion, smile/glasses/eyes-open, and
 more, stored per-image in DynamoDB and queryable through a small REST API.
 
-## About this rebuild
-
-This is a solo project. Unlike the other repos in this account, I didn't
-have my original project report or code on hand when rebuilding this one —
-so instead of reconstructing from real documentation, this is written from
-memory of the project's scope: a solo AWS project using Rekognition for
-face detection, with an S3 → Lambda pipeline and DynamoDB storing results.
-The specific file layout, API shape, and implementation details below are
-mine (freshly written and tested), not a recovery of the original code —
-I'm flagging that distinction clearly since I don't have the original to
-compare against.
-
 ## Architecture
 
 ```
