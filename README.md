@@ -76,8 +76,6 @@ python demo/cli.py path/to/photo.jpg \
 
 ## Notes / limitations (intentionally honest)
 
-- Rebuilt from memory rather than from original documentation — see "About
-  this rebuild" above.
 - The `UploadTimeIndex` GSI partitions on a constant `RecordType` value so
   every item lands in one logical partition. That's a known DynamoDB
   scaling limitation (fine for a small personal-project-scale table, not
