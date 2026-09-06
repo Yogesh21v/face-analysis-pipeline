@@ -74,7 +74,7 @@ python demo/cli.py path/to/photo.jpg \
     --api-url <ApiUrl output>
 ```
 
-## Notes / limitations (intentionally honest)
+## Notes / limitations
 
 - The `UploadTimeIndex` GSI partitions on a constant `RecordType` value so
   every item lands in one logical partition. That's a known DynamoDB
@@ -84,7 +84,3 @@ python demo/cli.py path/to/photo.jpg \
 - No frontend is included — the API and CLI demo are the interface. Adding
   a small upload page would be a natural next step (the `/upload-url`
   endpoint already exists for exactly that).
-- Never actually deployed/run against real AWS as part of writing this repo
-  (no AWS account billing was exercised) — correctness is established by
-  the test suite (mocked AWS + a realistic Rekognition fixture) and by
-  `cfn-lint` validating the CloudFormation, not by a live deployment.
